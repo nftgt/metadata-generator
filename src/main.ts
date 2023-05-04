@@ -1,7 +1,7 @@
 import csv from 'csvtojson'
 import * as dotenv from 'dotenv'
+import { filesFromPaths } from 'files-from-path'
 import { NFTStorage } from 'nft.storage'
-import { Blob } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import pino from 'pino'
@@ -17,6 +17,7 @@ const SEARCHING_EXTENSIONS = ['', '.jpg', '.jpeg', '.png', '.gif', '.mov', '.mp4
 dotenv.config()
 
 const logger = pino({
+  level: 'debug',
   transport: {
     target: 'pino-pretty',
     options: {
@@ -61,12 +62,8 @@ function validateData(data: InputData[]): string[] {
 
 async function uploadImagesToIpfs(filenames: string[]): Promise<string> {
   const client = new NFTStorage({ token: process.env.NFT_STORAGE_TOKEN as string })
-  const url = await client.storeDirectory(
-    filenames.map((filename) => {
-      const buffer = fs.readFileSync(filename)
-      return new Blob([buffer])
-    }),
-  )
+  const files = await filesFromPaths(filenames)
+  const url = await client.storeDirectory(files)
   return `ipfs://${url}`
 }
 
@@ -129,8 +126,8 @@ async function main() {
     }
 
     fs.writeFileSync(path.join(OUTPUT_DIR, `${record.tokenId}.json`), JSON.stringify(metadata))
-    logger.info(`Generated metadata #${record.tokenId}`)
   }
+  logger.info('Generated metadata.')
 
   logger.info('Done.')
 }
