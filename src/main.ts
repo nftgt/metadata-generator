@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv'
 import { NFTStorage } from 'nft.storage'
 import fs from 'node:fs'
 import path from 'node:path'
+import pino from 'pino'
 import { InputData } from './types'
 
 const INPUT_DIR = './input'
@@ -13,6 +14,15 @@ const DATA_FILENAME = 'data.csv'
 const SEARCHING_EXTENSIONS = ['', '.jpg', '.jpeg', '.png', '.gif', '.mov', '.mp4']
 
 dotenv.config()
+
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+    },
+  },
+})
 
 function getActualImageFilename(filename: string): string {
   if (filename) {
@@ -62,31 +72,45 @@ function generateDescription(template: string, data: InputData): string {
 }
 
 async function main() {
+  logger.info('Starting...')
+  logger.info(`Input directory: ${INPUT_DIR}`)
+  logger.info(`Dry run: ${process.env.DRY_RUN ? 'yes' : 'no'}`)
+  await new Promise((r) => setTimeout(r, 2000))
+
   // load
+  logger.info('Loading data...')
   const records = await loadData()
+  logger.info(`Loaded ${records.length} records.`)
 
   // validate
+  logger.info('Validating data...')
   const errors = validateData(records)
   if (errors.length) {
-    console.error('Errors:', '\n', errors.join('\n'))
+    logger.error('Errors:', '\n', errors.join('\n'))
     return
   }
+  logger.info('Data is valid.')
 
   // upload images
+  logger.info('Uploading images to IPFS...')
   let ipfsUrl: string
   if (process.env.DRY_RUN) {
     ipfsUrl = 'ipfs://test'
   } else {
     ipfsUrl = await uploadImagesToIpfs(records.map((record) => path.join(IMAGE_DIR, record.filename)))
   }
+  logger.info(`Uploaded images to ${ipfsUrl}`)
 
   // reset output dir
   if (fs.existsSync(OUTPUT_DIR)) {
+    logger.info('Resetting output directory...')
     fs.rmSync(OUTPUT_DIR, { recursive: true, force: true })
   }
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
+  logger.info(`Output directory is ready: ${OUTPUT_DIR}`)
 
   // generate metadata
+  logger.info('Generating metadata files...')
   const template = fs.existsSync(TEMPLATE_FILE) ? fs.readFileSync(TEMPLATE_FILE, 'utf8') : ''
   for (const record of records) {
     let description = record.description || generateDescription(template, record)
@@ -98,7 +122,10 @@ async function main() {
     }
 
     fs.writeFileSync(path.join(OUTPUT_DIR, `${record.tokenId}.json`), JSON.stringify(metadata))
+    logger.info(`Generated metadata #${record.tokenId}`)
   }
+
+  logger.info('Done.')
 }
 
 main()
