@@ -1,0 +1,24 @@
+{
+  "name": "metadata-generator",
+  "version": "1.0.0",
+  "main": "src/main.ts",
+  "repository": "https://github.com/nftgt/metadata-generator.git",
+  "author": "NFTGT",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node src/main.ts"
+  },
+  "dependencies": {
+    "@types/node": "^18.16.3",
+    "csvtojson": "^2.0.10",
+    "dotenv": "^16.0.3",
+    "nft.storage": "^7.0.3",
+    "typescript": "^5.0.4"
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^4.1.1",
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.1"
+  }
+}
