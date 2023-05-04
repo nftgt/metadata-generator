@@ -74,7 +74,7 @@ function generateDescription(template: string, data: InputData): string {
 async function main() {
   logger.info('Starting...')
   logger.info(`Input directory: ${INPUT_DIR}`)
-  logger.info(`Dry run: ${process.env.DRY_RUN ? 'yes' : 'no'}`)
+  logger.info(`Dry run: ${process.env.DRY_RUN === 'true' ? 'yes' : 'no'}`)
   await new Promise((r) => setTimeout(r, 2000))
 
   // load
@@ -94,7 +94,7 @@ async function main() {
   // upload images
   logger.info('Uploading images to IPFS...')
   let ipfsUrl: string
-  if (process.env.DRY_RUN) {
+  if (process.env.DRY_RUN === 'true') {
     ipfsUrl = 'ipfs://test'
   } else {
     ipfsUrl = await uploadImagesToIpfs(records.map((record) => path.join(IMAGE_DIR, record.filename)))
