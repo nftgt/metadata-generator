@@ -1,6 +1,7 @@
 import csv from 'csvtojson'
 import * as dotenv from 'dotenv'
 import { NFTStorage } from 'nft.storage'
+import { Blob } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import pino from 'pino'
@@ -60,7 +61,13 @@ function validateData(data: InputData[]): string[] {
 
 async function uploadImagesToIpfs(filenames: string[]): Promise<string> {
   const client = new NFTStorage({ token: process.env.NFT_STORAGE_TOKEN as string })
-  return 'ipfs://' + client.storeDirectory(filenames)
+  const url = await client.storeDirectory(
+    filenames.map((filename) => {
+      const buffer = fs.readFileSync(filename)
+      return new Blob([buffer])
+    }),
+  )
+  return `ipfs://${url}`
 }
 
 function generateDescription(template: string, data: InputData): string {
