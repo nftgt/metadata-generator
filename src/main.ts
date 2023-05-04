@@ -1,6 +1,6 @@
 import csv from 'csvtojson'
 import * as dotenv from 'dotenv'
-import { filesFromPaths } from 'files-from-path'
+import { FileLike, filesFromPaths } from 'files-from-path'
 import { NFTStorage } from 'nft.storage'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -60,16 +60,24 @@ function validateData(data: InputData[]): string[] {
   return errors
 }
 
-async function uploadImagesToIpfs(filenames: string[]): Promise<string> {
+async function getFilesFromData(data: InputData[]): Promise<FileLike[]> {
+  const files = await filesFromPaths(data.map((record) => path.join(IMAGE_DIR, record.filename)))
+  files.forEach((file, index) => {
+    file.name = data[index].tokenId + path.extname(file.name)
+  })
+  return files
+}
+
+async function uploadImagesToIpfs(data: InputData[]): Promise<string> {
   const client = new NFTStorage({ token: process.env.NFT_STORAGE_TOKEN as string })
-  const files = await filesFromPaths(filenames)
+  const files = await getFilesFromData(data)
   const url = await client.storeDirectory(files)
   return `ipfs://${url}`
 }
 
-function generateDescription(template: string, data: InputData): string {
-  for (const key of Object.keys(data)) {
-    template = template.replace(RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi'), data[key] || '')
+function generateDescription(template: string, record: InputData): string {
+  for (const key of Object.keys(record)) {
+    template = template.replace(RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi'), record[key] || '')
   }
 
   return template
@@ -101,7 +109,7 @@ async function main() {
   if (process.env.DRY_RUN === 'true') {
     ipfsUrl = 'ipfs://test'
   } else {
-    ipfsUrl = await uploadImagesToIpfs(records.map((record) => path.join(IMAGE_DIR, record.filename)))
+    ipfsUrl = await uploadImagesToIpfs(records)
   }
   logger.info(`Uploaded images to ${ipfsUrl}`)
 
@@ -122,7 +130,7 @@ async function main() {
     const metadata = {
       name: record.name,
       description,
-      image: `${ipfsUrl}/${record.filename}`,
+      image: `${ipfsUrl}/${record.tokenId}${path.extname(record.filename)}`,
     }
 
     fs.writeFileSync(path.join(OUTPUT_DIR, `${record.tokenId}.json`), JSON.stringify(metadata))
